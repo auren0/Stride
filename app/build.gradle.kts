@@ -38,7 +38,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8: сжатие и оптимизация кода — заметно ускоряет запуск и работу на слабых телефонах.
+            isMinifyEnabled = true
+            isShrinkResources = true
 
             signingConfig = signingConfigs.getByName("release")
 
@@ -94,8 +96,6 @@ dependencies {
     implementation(libs.androidx.foundation.layout)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.navigation:navigation-compose:2.9.4")
-    implementation(libs.material.icons.extended)
-    implementation(libs.material.icons.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

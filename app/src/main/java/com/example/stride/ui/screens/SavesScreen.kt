@@ -104,22 +104,10 @@ fun SavesScreen(stepsViewModel: StepsViewModel) {
     val monthlyDistance = remember(monthlySteps) { monthlySteps * 0.0008 }
     val monthlyCalories = remember(monthlySteps) { (monthlySteps * 0.04).toInt() }
 
-    // Smooth counter animations for monthly stats
-    val animatedMonthlySteps by animateIntAsState(
-        targetValue = monthlySteps,
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-        label = "animatedMonthlySteps"
-    )
-    val animatedMonthlyCalories by animateIntAsState(
-        targetValue = monthlyCalories,
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-        label = "animatedMonthlyCalories"
-    )
-    val animatedMonthlyDistance by animateFloatAsState(
-        targetValue = monthlyDistance.toFloat(),
-        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
-        label = "animatedMonthlyDistance"
-    )
+    // Без анимации счётчиков: иначе при каждом шаге перерисовывается весь календарь на каждом кадре.
+    val animatedMonthlySteps = monthlySteps
+    val animatedMonthlyCalories = monthlyCalories
+    val animatedMonthlyDistance = monthlyDistance.toFloat()
 
     val offset = remember(month) { month.atDay(1).dayOfWeek.value - 1 }
     val daysInMonth = remember(month) { month.lengthOfMonth() }
@@ -406,13 +394,7 @@ fun SavesScreen(stepsViewModel: StepsViewModel) {
                     AnimatedContent(
                         targetState = month,
                         transitionSpec = {
-                            if (targetState > initialState) {
-                                (slideInHorizontally { width -> width / 4 } + fadeIn(tween(260))) togetherWith
-                                (slideOutHorizontally { width -> -width / 4 } + fadeOut(tween(200)))
-                            } else {
-                                (slideInHorizontally { width -> -width / 4 } + fadeIn(tween(260))) togetherWith
-                                (slideOutHorizontally { width -> width / 4 } + fadeOut(tween(200)))
-                            }
+                            fadeIn(tween(160)) togetherWith fadeOut(tween(100))
                         },
                         label = "CalendarMonthGridTransition"
                     ) { activeMonth ->

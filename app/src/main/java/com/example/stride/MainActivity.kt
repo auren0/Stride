@@ -34,7 +34,11 @@ class MainActivity : ComponentActivity() {
             val themeState by themeViewModel.themeState
             val stepsViewModel: StepsViewModel = viewModel()
             StrideTheme(themeMode = themeState.themeMode) {
-                Navigation(stepsViewModel = stepsViewModel, onRequestPermission = { requestPermissions() })
+                Navigation(
+                    stepsViewModel = stepsViewModel,
+                    themeViewModel = themeViewModel,
+                    onRequestPermission = { requestPermissions() }
+                )
             }
         }
         if (savedInstanceState == null) requestPermissions()

@@ -23,17 +23,22 @@ import androidx.compose.ui.unit.sp
 import com.example.stride.R
 import com.example.stride.components.MyText
 import com.example.stride.ui.screens.SavesScreen
+import com.example.stride.ui.screens.SettingsScreen
 import com.example.stride.ui.screens.StepsScreen
+import com.example.stride.ui.theme.ThemeViewModel
 import com.example.stride.viewmodel.StepsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) {
+fun Navigation(
+    stepsViewModel: StepsViewModel,
+    themeViewModel: ThemeViewModel,
+    onRequestPermission: () -> Unit
+) {
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var showGoal by rememberSaveable { mutableStateOf(false) }
-    val isClassicLayout by stepsViewModel.isClassicLayout.collectAsState()
     val stateHolder = rememberSaveableStateHolder()
-    val titles = listOf("Шаги", "Календарь")
+    val titles = listOf("Шаги", "Календарь", "Настройки")
 
     Scaffold(
         topBar = {
@@ -56,22 +61,6 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
                 },
                 actions = {
                     if (selected == 0) {
-                        FilledTonalIconButton(
-                            onClick = { stepsViewModel.toggleStepsLayout() },
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                            )
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_layout),
-                                contentDescription = if (isClassicLayout) "Включить современный стиль" else "Включить классический стиль",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
                         FilledTonalIconButton(
                             onClick = { showGoal = true },
                             modifier = Modifier.padding(end = 8.dp),
@@ -102,6 +91,7 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 tonalElevation = 3.dp
             ) {
+                // Tab 0: Шаги
                 NavigationBarItem(
                     selected = selected == 0,
                     onClick = { selected = 0 },
@@ -128,12 +118,14 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
                     ),
                     alwaysShowLabel = true
                 )
+
+                // Tab 1: Календарь (with proper calendar icon)
                 NavigationBarItem(
                     selected = selected == 1,
                     onClick = { selected = 1 },
                     icon = {
                         Icon(
-                            painter = painterResource(if (selected == 1) R.drawable.save_filled else R.drawable.save_outlined),
+                            painter = painterResource(if (selected == 1) R.drawable.calendar_filled else R.drawable.calendar_outlined),
                             contentDescription = null,
                             modifier = Modifier.size(24.dp)
                         )
@@ -143,6 +135,34 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
                             text = titles[1],
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (selected == 1) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    alwaysShowLabel = true
+                )
+
+                // Tab 2: Настройки
+                NavigationBarItem(
+                    selected = selected == 2,
+                    onClick = { selected = 2 },
+                    icon = {
+                        Icon(
+                            painter = painterResource(if (selected == 2) R.drawable.settings_filled else R.drawable.settings_outlined),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    },
+                    label = {
+                        MyText(
+                            text = titles[2],
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selected == 2) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
@@ -166,13 +186,8 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
             AnimatedContent(
                 targetState = selected,
                 transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally { width -> width / 4 } + fadeIn(tween(280))) togetherWith
-                        (slideOutHorizontally { width -> -width / 4 } + fadeOut(tween(200)))
-                    } else {
-                        (slideInHorizontally { width -> -width / 4 } + fadeIn(tween(280))) togetherWith
-                        (slideOutHorizontally { width -> width / 4 } + fadeOut(tween(200)))
-                    }
+                    // Только плавное появление: слайд целого экрана заметно тормозит на старых телефонах.
+                    fadeIn(tween(160)) togetherWith fadeOut(tween(100))
                 },
                 label = "ScreenNavigationTransition"
             ) { page ->
@@ -180,6 +195,7 @@ fun Navigation(stepsViewModel: StepsViewModel, onRequestPermission: () -> Unit) 
                     when (page) {
                         0 -> StepsScreen(stepsViewModel, onRequestPermission)
                         1 -> SavesScreen(stepsViewModel)
+                        2 -> SettingsScreen(stepsViewModel, themeViewModel)
                     }
                 }
             }

@@ -11,9 +11,10 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
 import android.os.SystemClock
-import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.example.stride.MainActivity
 import com.example.stride.R
@@ -26,9 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 
 class StepForegroundService : Service(), SensorEventListener {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -37,7 +36,7 @@ class StepForegroundService : Service(), SensorEventListener {
     private var registered = false
     private var accelerometerDetector: StepDetector? = null
     private var lastNotification = 0L
-    private val boot by lazy { Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, -1) }
+    private var sensorThread: HandlerThread? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -61,7 +60,7 @@ class StepForegroundService : Service(), SensorEventListener {
                     registered = sensors.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
                 }
 
-                // If hardware step sensor is not available (e.g. in emulator), fallback to accelerometer
+                // If hardware step sensor is not available (e.g. in emulator or budget device), fallback to accelerometer
                 if (!registered) {
                     val accel = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
                     if (accel != null) {
@@ -69,12 +68,22 @@ class StepForegroundService : Service(), SensorEventListener {
                             addStepListener { _ ->
                                 val date = LocalDate.now()
                                 scope.launch {
-                                    repository.record(date, counter = null, boot = boot, detected = 1)
+                                    repository.record(date, counter = null, elapsed = SystemClock.elapsedRealtime(), detected = 1)
                                 }
                             }
                         }
                         accelerometerDetector = detector
-                        registered = sensors.registerListener(detector, accel, SensorManager.SENSOR_DELAY_GAME)
+                        // Акселерометр опрашивается 50 раз/с — обрабатываем в отдельном потоке,
+                        // чтобы не нагружать главный поток (иначе приложение лагает).
+                        val thread = HandlerThread("stride-accel").also { it.start() }
+                        sensorThread = thread
+                        registered = sensors.registerListener(
+                            detector, accel, SensorManager.SENSOR_DELAY_GAME, Handler(thread.looper)
+                        )
+                        if (!registered) {
+                            thread.quitSafely()
+                            sensorThread = null
+                        }
                     }
                 }
 
@@ -120,12 +129,12 @@ class StepForegroundService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        val time = System.currentTimeMillis() - (SystemClock.elapsedRealtimeNanos() - event.timestamp) / 1_000_000
-        val date = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDate()
+        val date = LocalDate.now()
+        val elapsed = SystemClock.elapsedRealtime()
         val counter = if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) event.values[0].toInt() else null
-        val detected = if (counter == null) event.values[0].toInt() else 0
+        val detected = if (counter == null) 1 else 0
         scope.launch {
-            repository.record(date, counter, boot, detected)
+            repository.record(date, counter, elapsed, detected)
             if (repository.state.value.status.contains("Подключение датчика", ignoreCase = true)) {
                 repository.status("")
             }
@@ -155,6 +164,8 @@ class StepForegroundService : Service(), SensorEventListener {
     override fun onDestroy() {
         sensors.unregisterListener(this)
         accelerometerDetector?.let { sensors.unregisterListener(it) }
+        sensorThread?.quitSafely()
+        sensorThread = null
         scope.cancel()
         super.onDestroy()
     }
