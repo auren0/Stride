@@ -2,6 +2,7 @@ package com.example.stride.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
@@ -12,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.stride.R
 import com.example.stride.components.MyText
+import com.example.stride.ui.theme.AccentColor
 import com.example.stride.ui.theme.Purple40
 import com.example.stride.ui.theme.Purple80
 import com.example.stride.ui.theme.ThemeMode
@@ -123,32 +128,41 @@ fun SettingsScreen(
         SettingsHero()
 
         SectionTitle("Тема оформления")
+        val currentAccent = MaterialTheme.colorScheme.primary
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             ThemeTile(
                 title = "Светлая",
-                preview = ThemePreview(Color(0xFFFFFBFE), Color(0xFFE7E0EC), Purple40),
+                preview = ThemePreview(Color(0xFFFFFBFE), Color(0xFFE7E0EC), currentAccent),
                 selected = themeState.themeMode == ThemeMode.LIGHT,
                 onClick = { themeViewModel.setThemeMode(ThemeMode.LIGHT) },
                 modifier = Modifier.weight(1f)
             )
             ThemeTile(
                 title = "Тёмная",
-                preview = ThemePreview(Color(0xFF1C1B1F), Color(0xFF2B2930), Purple80),
+                preview = ThemePreview(Color(0xFF1C1B1F), Color(0xFF2B2930), currentAccent),
                 selected = themeState.themeMode == ThemeMode.DARK,
                 onClick = { themeViewModel.setThemeMode(ThemeMode.DARK) },
                 modifier = Modifier.weight(1f)
             )
             ThemeTile(
                 title = "OLED",
-                preview = ThemePreview(Color(0xFF000000), Color(0xFF1A1A1A), Purple80),
+                preview = ThemePreview(Color(0xFF000000), Color(0xFF1A1A1A), currentAccent),
                 selected = themeState.themeMode == ThemeMode.OLED,
                 onClick = { themeViewModel.setThemeMode(ThemeMode.OLED) },
                 modifier = Modifier.weight(1f)
             )
         }
+
+        Spacer(Modifier.height(8.dp))
+        SectionTitle("Акцентный цвет")
+        AccentColorPicker(
+            selectedAccent = themeState.accentColor,
+            isDark = themeState.themeMode != ThemeMode.LIGHT,
+            onSelectAccent = { themeViewModel.setAccentColor(it) }
+        )
 
         Spacer(Modifier.height(8.dp))
         SectionTitle("Данные")
@@ -469,5 +483,116 @@ private fun SettingsRow(entry: SettingsEntry, shape: Shape) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun AccentColorPicker(
+    selectedAccent: AccentColor,
+    isDark: Boolean,
+    onSelectAccent: (AccentColor) -> Unit
+) {
+    val context = LocalContext.current
+    val isDynamicAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val systemAccentColor = remember(context, isDark, isDynamicAvailable) {
+        if (isDynamicAvailable) {
+            if (isDark) dynamicDarkColorScheme(context).primary
+            else dynamicLightColorScheme(context).primary
+        } else {
+            Purple40
+        }
+    }
+
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AccentColor.entries.forEach { accent ->
+                val isSelected = accent == selectedAccent
+                val color = if (accent == AccentColor.SYSTEM) systemAccentColor else accent.previewColor
+
+                AccentColorItem(
+                    accent = accent,
+                    color = color,
+                    isSelected = isSelected,
+                    isDynamic = accent == AccentColor.SYSTEM && isDynamicAvailable,
+                    onClick = { onSelectAccent(accent) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccentColorItem(
+    accent: AccentColor,
+    color: Color,
+    isSelected: Boolean,
+    isDynamic: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "accentScale"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .clip(CircleShape)
+                .background(color)
+                .then(
+                    if (isSelected) {
+                        Modifier.border(BorderStroke(3.dp, MaterialTheme.colorScheme.primary), CircleShape)
+                    } else {
+                        Modifier.border(BorderStroke(1.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)), CircleShape)
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else if (accent == AccentColor.SYSTEM) {
+                Icon(
+                    painter = painterResource(R.drawable.settings_outlined),
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        MyText(
+            text = accent.title,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

@@ -33,7 +33,10 @@ class MainActivity : ComponentActivity() {
             val themeViewModel: ThemeViewModel = viewModel()
             val themeState by themeViewModel.themeState
             val stepsViewModel: StepsViewModel = viewModel()
-            StrideTheme(themeMode = themeState.themeMode) {
+            StrideTheme(
+                themeMode = themeState.themeMode,
+                accentColor = themeState.accentColor
+            ) {
                 Navigation(
                     stepsViewModel = stepsViewModel,
                     themeViewModel = themeViewModel,
