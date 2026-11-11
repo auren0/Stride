@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="screenshots/steps.png" width="30%" alt="Главный экран" />
-  <img src="screenshots/settings.png" width="30%" alt="Календарь и статистика" />
+  <img src="screenshots/history.png" width="30%" alt="Календарь и статистика" />
   <img src="screenshots/settings.png" width="30%" alt="Настройки" />
 </p>
 
