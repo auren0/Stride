@@ -211,7 +211,7 @@ fun SettingsScreen(
         SettingsGroup {
             item(
                 iconRes = R.drawable.step,
-                title = "Stride 1.1",
+                title = "Stride 1.2.0",
                 subtitle = "Шаги считает датчик телефона без лишнего расхода батареи",
                 iconBackground = MaterialTheme.colorScheme.primaryContainer,
                 iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
